@@ -6,8 +6,16 @@
 	  * a render endpoint in LOOPBACK mode  -> "whatever your PC is playing"
 	  * a capture endpoint (microphone / line-in / virtual cable)
 
-	The captured PCM is played as a looping, non-positional sound, so it
-	behaves like any other radio channel (volume, start/stop, etc).
+	The captured PCM is played as a looping sound, so it behaves like any
+	other radio channel (volume, start/stop, etc).
+
+	Integration with the in-game PDA radio (Anomaly Radio Revamp / vanilla):
+	  * needs a charged PDA to run and drains its battery while playing
+	  * never plays at the same time as the PDA radio or music player
+	  * remembers its on/off state across saves and resumes on load
+
+	Optional "in-world reverb" mode plays the feed as a mono source routed
+	through the level's EAX reverb, so it echoes caves, bunkers, etc.
 
 	Requires an engine build that exposes the 'radio_channel' Lua class.
 	If that class is missing this script degrades gracefully (no-ops).
@@ -16,11 +24,17 @@
 local chan    = nil    -- radio_channel instance (created lazily)
 local playing = false
 
+local resume_pending = false   -- set by load_state, consumed on first update
+local applied_spatial = false  -- spatial mode the current channel was opened with
+
 -- Defaults (used when MCM is not installed) ----------------------------------
-local DEF_DEVICE = ""                  -- "" => system default render endpoint
-local DEF_VOL    = 0.7
-local DEF_RING   = 1500                -- ring/latency buffer in ms
-local DEF_KEY    = DIK_keys.DIK_HOME
+local DEF_DEVICE     = ""               -- "" => system default render endpoint
+local DEF_VOL        = 0.7
+local DEF_RING       = 1500             -- ring/latency buffer in ms
+local DEF_KEY        = DIK_keys.DIK_HOME
+local DEF_PDA        = true             -- require/drain PDA battery
+local DEF_REVERB     = false            -- in-world reverb (mono)
+local DEF_REVERB_WET = 0.5              -- reverb send level [0..1]
 
 -- MCM helpers ----------------------------------------------------------------
 local function mcm_get(key, default)
@@ -31,9 +45,12 @@ local function mcm_get(key, default)
 	return default
 end
 
-function get_device_id() return mcm_get("device", DEF_DEVICE) end
-function get_volume()    return mcm_get("volume", DEF_VOL) end
-function get_ring_ms()   return mcm_get("latency", DEF_RING) end
+function get_device_id()  return mcm_get("device", DEF_DEVICE) end
+function get_volume()     return mcm_get("volume", DEF_VOL) end
+function get_ring_ms()    return mcm_get("latency", DEF_RING) end
+function get_use_pda()    return mcm_get("use_pda", DEF_PDA) end
+function get_reverb()     return mcm_get("reverb", DEF_REVERB) end
+function get_reverb_wet() return mcm_get("reverb_wet", DEF_REVERB_WET) end
 
 local function available()
 	return radio_channel ~= nil
@@ -60,6 +77,31 @@ local function notify(msg)
 	end
 end
 
+-- PDA battery ----------------------------------------------------------------
+-- Mirrors the in-game radio: needs a charged PDA in the slot to start, and
+-- drains it while running. Guarded so it is harmless if item_device is absent.
+local function pda_ok()
+	if not get_use_pda() then return true end
+	if not (item_device and item_device.is_pda_charged) then return true end
+	return item_device.is_pda_charged(true)
+end
+
+local function pda_drain()
+	if not get_use_pda() then return end
+	if not (item_device and item_device.drain_device_on_event and db.actor) then return end
+	local pda = db.actor:item_in_slot(8)
+	if pda then
+		item_device.drain_device_on_event(pda, nil, 2)
+	end
+end
+
+-- Cooperate with the PDA radio/music player so the two never overlap ---------
+local function stop_pda_radio()
+	if not ui_pda_radio_tab then return end
+	if ui_pda_radio_tab.action_radio_stop then ui_pda_radio_tab.action_radio_stop() end
+	if ui_pda_radio_tab.action_plyr_stop  then ui_pda_radio_tab.action_plyr_stop()  end
+end
+
 -- Public API -----------------------------------------------------------------
 function is_on()
 	return playing and chan ~= nil and chan:is_open()
@@ -71,9 +113,22 @@ function start()
 		notify("engine 'radio_channel' binding not found")
 		return false
 	end
+	if not pda_ok() then
+		notify("needs a charged PDA")
+		return false
+	end
+
+	-- do not play over the in-game radio / music player
+	stop_pda_radio()
 
 	if not chan then chan = radio_channel() end
 	chan:set_ring_ms(get_ring_ms())
+
+	-- spatial/reverb is chosen before opening (mono needs its own channel)
+	local spatial = get_reverb() and true or false
+	chan:set_spatial(spatial)
+	chan:set_reverb(get_reverb_wet())
+	applied_spatial = spatial
 
 	local id = get_device_id()
 	local ok
@@ -91,7 +146,7 @@ function start()
 	chan:set_volume(get_volume())
 	chan:play(db.actor)
 	playing = true
-	notify("on")
+	notify(spatial and "on (in-world reverb)" or "on")
 	return true
 end
 
@@ -114,22 +169,83 @@ end
 -- Hotkey + lifecycle ---------------------------------------------------------
 local KEY = DEF_KEY
 
-local function on_option_change(mcm)
+local function on_option_change()
 	KEY = mcm_get("keybind", DEF_KEY)
-	if is_on() then set_volume(get_volume()) end
+	if not is_on() then return end
+
+	-- live-tunable while playing
+	set_volume(get_volume())
+	if chan then chan:set_reverb(get_reverb_wet()) end
+
+	-- toggling reverb changes the channel layout (mono<->stereo): re-open
+	local spatial = get_reverb() and true or false
+	if spatial ~= applied_spatial then
+		stop()
+		start()
+	end
 end
 
 local function on_key_press(key)
 	if key == KEY then toggle() end
 end
 
+local function actor_on_update()
+	if not is_on() then return end
+
+	-- drain the PDA, and stop if it dies / is removed
+	pda_drain()
+	if not pda_ok() then
+		notify("PDA battery depleted")
+		stop()
+	end
+end
+
+-- Resume on load: load_state flags it, the first update after the actor is
+-- ready actually starts the feed (audio capture needs a live actor).
+local function actor_on_first_update()
+	if resume_pending then
+		resume_pending = false
+		if pda_ok() then start() end
+	end
+end
+
 local function actor_on_net_destroy()
-	stop()   -- never keep a live channel across save/exit
+	stop()   -- tear down the live channel on unload; state is saved separately
+end
+
+local function save_state(m_data)
+	m_data.radio_live = { on = is_on() }
+end
+
+local function load_state(m_data)
+	local d = m_data.radio_live
+	resume_pending = d ~= nil and d.on == true
 end
 
 function on_game_start()
 	RegisterScriptCallback("on_option_change", on_option_change)
 	RegisterScriptCallback("on_key_press", on_key_press)
+	RegisterScriptCallback("actor_on_update", actor_on_update)
+	RegisterScriptCallback("actor_on_first_update", actor_on_first_update)
 	RegisterScriptCallback("actor_on_net_destroy", actor_on_net_destroy)
-	on_option_change(true)
+	RegisterScriptCallback("save_state", save_state)
+	RegisterScriptCallback("load_state", load_state)
+	on_option_change()
+
+	-- When the PDA radio / music player starts, stop the live feed first so
+	-- they never overlap. Wrap the in-game radio's global start actions once
+	-- (on_game_start can fire on every load, so guard against re-wrapping).
+	if ui_pda_radio_tab and not ui_pda_radio_tab.__radio_live_wrapped then
+		local function wrap(name)
+			local orig = ui_pda_radio_tab[name]
+			if type(orig) ~= "function" then return end
+			ui_pda_radio_tab[name] = function(...)
+				if is_on() then stop() end
+				return orig(...)
+			end
+		end
+		wrap("action_radio_start")
+		wrap("action_plyr_start")
+		ui_pda_radio_tab.__radio_live_wrapped = true
+	end
 end

@@ -89,6 +89,13 @@ public:
 
 	int load_reverb(ALuint effect, const EFXEAXREVERBPROPERTIES* reverb);
 
+	// Per-source wet-send filter helpers (live "radio" reverb). These wrap the
+	// private EFX filter entry points so targets can scale their reverb send.
+	// All are safe no-ops when EFX is unsupported.
+	ALuint efx_create_lowpass();
+	void   efx_set_lowpass_gain(ALuint filter, float gain, float gainhf);
+	void   efx_delete_filter(ALuint filter);
+
 	virtual void _initialize(int stage);
 	virtual void _clear();
 	virtual void _restart();

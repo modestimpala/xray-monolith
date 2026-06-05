@@ -17,6 +17,8 @@ class CScriptRadio
 	CSound_live_channel* m_channel;
 	float                m_volume;
 	u32                  m_ring_ms;
+	bool                 m_spatial;    // spatial/reverb mode (mono + env reverb send)
+	float                m_reverb_wet; // reverb send level [0..1]
 
 public:
 	CScriptRadio();
@@ -33,6 +35,13 @@ public:
 
 	void  SetRingMs(u32 ms) { m_ring_ms = ms; }
 	u32   GetRingMs() const { return m_ring_ms; }
+
+	// "in-world" reverb mode. Takes effect on the next open() (mono needs a
+	// re-open); call SetReverb() alone to retune wet while already playing.
+	void  SetSpatial(bool on) { m_spatial = on; }
+	bool  IsSpatial() const { return m_spatial; }
+	void  SetReverb(float wet);
+	float GetReverb() const { return m_reverb_wet; }
 
 	void  Play(CScriptGameObject* obj);
 	void  Play2D(); //!< play with no game object (pure non-positional)

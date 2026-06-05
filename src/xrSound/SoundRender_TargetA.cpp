@@ -14,6 +14,8 @@ CSoundRender_TargetA::CSoundRender_TargetA(): CSoundRender_Target()
 	cache_pitch = 1.f;
 	pSource = 0;
 	Slot = u32(-1);
+	pFilter = 0;
+	cache_wet = -1.f;
 }
 
 CSoundRender_TargetA::~CSoundRender_TargetA()
@@ -54,6 +56,11 @@ void CSoundRender_TargetA::_destroy()
 	if (alIsSource(pSource))
 		alDeleteSources(1, &pSource);
 	A_CHK(alDeleteBuffers (sdef_target_count, pBuffers));
+	if (pFilter && SoundRenderA)
+	{
+		SoundRenderA->efx_delete_filter(pFilter);
+		pFilter = 0;
+	}
 	inherited::_destroy();
 }
 
@@ -79,18 +86,45 @@ void CSoundRender_TargetA::render()
 		fill_block(pBuffers[buf_idx]);
 
 	A_CHK(alSourceQueueBuffers(pSource, sdef_target_count, pBuffers));
-	if (Slot != u32(-1) && !m_pEmitter->bIntro)
-	{
-		A_CHK(alSource3i(pSource, AL_AUXILIARY_SEND_FILTER, Slot, 0, AL_FILTER_NULL));
-	}
-	// demonized: explicitly disable effects by sending sounds to null slot, ie. not sending
-	else
-	{
-		A_CHK(alSource3i(pSource, AL_AUXILIARY_SEND_FILTER, AL_EFFECTSLOT_NULL, 0, NULL));
-	}
+	cache_wet = -1.f; // force set_reverb_send to (re)bind the send
+	set_reverb_send();
 	A_CHK(alSourcePlay(pSource));
 
 	inherited::render();
+}
+
+// Bind this source's auxiliary reverb send. Normal sources route to the global
+// env reverb slot at full wet; a live "radio" source with reverb_enabled() gets
+// a tunable-wet lowpass filter on the send so a mono feed echoes the listener's
+// environment without distance attenuation. bIntro / no-slot sources are muted.
+void CSoundRender_TargetA::set_reverb_send()
+{
+	if (Slot == u32(-1) || m_pEmitter->bIntro)
+	{
+		// demonized: explicitly disable effects by sending to the null slot
+		A_CHK(alSource3i(pSource, AL_AUXILIARY_SEND_FILTER, AL_EFFECTSLOT_NULL, 0, NULL));
+		cache_wet = -1.f;
+		return;
+	}
+
+	CSoundRender_Source* S = m_pEmitter->source();
+	if (S->reverb_enabled() && SoundRenderA && SoundRenderA->m_is_supported)
+	{
+		float wet = S->reverb_wet();
+		clamp(wet, 0.f, 1.f);
+		if (!pFilter)
+			pFilter = SoundRenderA->efx_create_lowpass();
+		if (pFilter)
+		{
+			SoundRenderA->efx_set_lowpass_gain(pFilter, wet, wet);
+			A_CHK(alSource3i(pSource, AL_AUXILIARY_SEND_FILTER, Slot, 0, pFilter));
+			cache_wet = wet;
+			return;
+		}
+	}
+
+	A_CHK(alSource3i(pSource, AL_AUXILIARY_SEND_FILTER, Slot, 0, AL_FILTER_NULL));
+	cache_wet = -1.f;
 }
 
 void CSoundRender_TargetA::stop()
@@ -203,6 +237,15 @@ void CSoundRender_TargetA::fill_parameters()
 
 		A_CHK(alSourcef(pSource, AL_PITCH, cache_pitch));
 	}
+
+	// keep the live "radio" reverb wet in sync (e.g. MCM slider moved mid-play)
+	if (rendering && SE->source()->reverb_enabled())
+	{
+		float wet = SE->source()->reverb_wet();
+		if (!fsimilar(wet, cache_wet, 0.01f))
+			set_reverb_send();
+	}
+
 	VERIFY2(m_pEmitter, SE->source()->file_name());
 }
 

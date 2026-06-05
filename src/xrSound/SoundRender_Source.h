@@ -45,5 +45,12 @@ public:
 	// Live (external PCM) sources override this so the streaming path
 	// reads straight from a ring buffer instead of the OGG cache.
 	virtual bool is_live() const { return false; }
+
+	// Per-source EAX reverb send. Default sources route through the global
+	// reverb slot with full wet (handled by the target). Live "radio" sources
+	// can opt into a tunable wet send so a mono feed picks up the level's
+	// environment reverb without distance attenuation.
+	virtual bool  reverb_enabled() const { return false; }
+	virtual float reverb_wet() const { return 1.f; }
 };
 #endif

@@ -269,6 +269,11 @@ public:
 	virtual void set_volume(float v) = 0;
 	virtual void clear() = 0; //!< drop buffered audio
 
+	//! "in-world" reverb: when on, a (mono) channel is sent to the level's EAX
+	//! reverb slot at 'wet' [0..1] so it echoes the environment. No-op on stereo
+	//! channels (OpenAL does not route multichannel sources through the send).
+	virtual void set_spatial(bool /*on*/, float /*wet*/) {}
+
 	// --- optional built-in WASAPI producer ---
 	//! start capturing from an endpoint (id==null => default). loopback=true captures
 	//! whatever is playing on a render endpoint; false captures a mic/line-in.
@@ -479,7 +484,8 @@ public:
 	}
 	//! Create a live channel auto-fed by a WASAPI capture/loopback device.
 	//! endpoint_id==null => default render endpoint. Returns null on failure.
-	virtual CSound_live_channel* radio_open(LPCSTR endpoint_id, bool loopback, u32 ring_ms)
+	//! channels: 2 = stereo (flat 2D radio), 1 = mono (needed for spatial reverb).
+	virtual CSound_live_channel* radio_open(LPCSTR endpoint_id, bool loopback, u32 ring_ms, u16 channels = 2)
 	{
 		return nullptr;
 	}

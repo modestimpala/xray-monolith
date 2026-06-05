@@ -19,7 +19,11 @@ public:
 
 	ALuint buf_block;
 private:
+	ALuint pFilter;   // per-source wet-send filter for live "radio" reverb (0 = none)
+	float  cache_wet; // last applied reverb send level
 	void fill_block(ALuint BufferID);
+	// (re)bind this source's reverb aux-send, honoring a live source's wet level
+	void set_reverb_send();
 public:
 	CSoundRender_TargetA();
 	virtual ~CSoundRender_TargetA();

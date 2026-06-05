@@ -135,7 +135,7 @@ public:
 	void create_live(ref_sound& S, CSoundRender_Source_Live* src, esound_type sound_type, int game_type);
 
 	virtual CSound_live_channel* create_live_channel(u16 channels, u32 sample_rate, u32 ring_ms) override;
-	virtual CSound_live_channel* radio_open(LPCSTR endpoint_id, bool loopback, u32 ring_ms) override;
+	virtual CSound_live_channel* radio_open(LPCSTR endpoint_id, bool loopback, u32 ring_ms, u16 channels = 2) override;
 	virtual void destroy_live_channel(CSound_live_channel* ch) override;
 	virtual void enumerate_capture_devices(xr_vector<SSoundCaptureDevice>& dst) override;
 

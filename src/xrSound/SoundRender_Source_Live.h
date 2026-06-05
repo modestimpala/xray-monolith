@@ -21,11 +21,21 @@ class CSoundRender_Source_Live : public CSoundRender_Source
 	u32               m_read;   // read cursor inside the ring (consumer)
 	u32               m_avail;  // bytes written but not yet read (<= ring size)
 
+	bool              m_reverb; // route through the env reverb slot (mono only)
+	float             m_wet;    // reverb send level [0..1]
+
 public:
 	CSoundRender_Source_Live(LPCSTR name, u16 channels, u32 sample_rate, u32 ring_bytes);
 	virtual ~CSoundRender_Source_Live();
 
 	virtual bool is_live() const override { return true; }
+
+	// "in-world" reverb: when on (and the source is mono) the target sends this
+	// source to the global EAX reverb slot at 'wet' level, so it echoes the
+	// listener's environment. Distance attenuation stays off (played 2D).
+	void set_reverb(bool on, float wet);
+	virtual bool  reverb_enabled() const override { return m_reverb; }
+	virtual float reverb_wet() const override { return m_wet; }
 
 	// producer API (any thread)
 	void push_pcm(const void* data, u32 bytes);

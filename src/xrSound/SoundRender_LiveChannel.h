@@ -30,6 +30,7 @@ public:
 	virtual bool is_playing() override;
 	virtual void set_volume(float v) override;
 	virtual void clear() override;
+	virtual void set_spatial(bool on, float wet) override;
 
 	virtual bool start_capture(LPCSTR endpoint_id, bool loopback) override;
 	virtual void stop_capture() override;

@@ -13,7 +13,7 @@
 static xr_vector<SSoundCaptureDevice> g_radio_devices;
 
 CScriptRadio::CScriptRadio()
-	: m_channel(nullptr), m_volume(1.f), m_ring_ms(1500)
+	: m_channel(nullptr), m_volume(1.f), m_ring_ms(1500), m_spatial(false), m_reverb_wet(1.f)
 {
 }
 
@@ -22,12 +22,23 @@ CScriptRadio::~CScriptRadio()
 	Close();
 }
 
+// Spatial reverb needs a mono source; flat 2D radio stays stereo.
+static inline u16 radio_channels(bool spatial) { return spatial ? (u16)1 : (u16)2; }
+
+void CScriptRadio::SetReverb(float wet)
+{
+	clamp(wet, 0.f, 1.f);
+	m_reverb_wet = wet;
+	if (m_channel) m_channel->set_spatial(m_spatial, m_reverb_wet);
+}
+
 bool CScriptRadio::OpenLoopback(LPCSTR device_id)
 {
 	if (!::Sound) return false;
 	Close();
 	LPCSTR id = (device_id && xr_strlen(device_id)) ? device_id : nullptr;
-	m_channel = ::Sound->radio_open(id, true, m_ring_ms);
+	m_channel = ::Sound->radio_open(id, true, m_ring_ms, radio_channels(m_spatial));
+	if (m_channel) m_channel->set_spatial(m_spatial, m_reverb_wet);
 	return m_channel != nullptr;
 }
 
@@ -41,7 +52,8 @@ bool CScriptRadio::OpenCapture(LPCSTR device_id)
 	if (!::Sound) return false;
 	Close();
 	LPCSTR id = (device_id && xr_strlen(device_id)) ? device_id : nullptr;
-	m_channel = ::Sound->radio_open(id, false, m_ring_ms);
+	m_channel = ::Sound->radio_open(id, false, m_ring_ms, radio_channels(m_spatial));
+	if (m_channel) m_channel->set_spatial(m_spatial, m_reverb_wet);
 	return m_channel != nullptr;
 }
 

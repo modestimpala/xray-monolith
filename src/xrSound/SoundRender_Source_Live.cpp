@@ -40,6 +40,16 @@ CSoundRender_Source_Live::CSoundRender_Source_Live(LPCSTR name, u16 channels, u3
 	// 2D radio: distance attenuation is irrelevant, keep sane defaults from base
 	m_fBaseVolume = 1.f;
 	m_uGameType = 0;
+
+	m_reverb = false;
+	m_wet = 1.f;
+}
+
+void CSoundRender_Source_Live::set_reverb(bool on, float wet)
+{
+	clamp(wet, 0.f, 1.f);
+	m_reverb = on;
+	m_wet = wet;
 }
 
 CSoundRender_Source_Live::~CSoundRender_Source_Live()

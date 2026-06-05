@@ -159,6 +159,41 @@ int CSoundRender_CoreA::load_reverb(ALuint effect_, const EFXEAXREVERBPROPERTIES
 	return 1;
 }
 
+ALuint CSoundRender_CoreA::efx_create_lowpass()
+{
+	if (!m_is_supported || !alGenFilters)
+		return 0;
+	ALuint f = 0;
+	alGenFilters(1, &f);
+	if (alGetError() != AL_NO_ERROR)
+		return 0;
+	alFilteri(f, AL_FILTER_TYPE, AL_FILTER_LOWPASS);
+	if (alGetError() != AL_NO_ERROR)
+	{
+		alDeleteFilters(1, &f);
+		return 0;
+	}
+	return f;
+}
+
+void CSoundRender_CoreA::efx_set_lowpass_gain(ALuint filter, float gain, float gainhf)
+{
+	if (!m_is_supported || !filter || !alFilterf)
+		return;
+	clamp(gain, 0.f, 1.f);
+	clamp(gainhf, 0.f, 1.f);
+	A_CHK(alFilterf(filter, AL_LOWPASS_GAIN, gain));
+	A_CHK(alFilterf(filter, AL_LOWPASS_GAINHF, gainhf));
+}
+
+void CSoundRender_CoreA::efx_delete_filter(ALuint filter)
+{
+	if (!filter || !alDeleteFilters)
+		return;
+	if (alIsFilter(filter))
+		alDeleteFilters(1, &filter);
+}
+
 void CSoundRender_CoreA::commit()
 {
 	// Tell the effect slot to use the loaded effect object. Note that this

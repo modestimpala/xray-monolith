@@ -62,12 +62,13 @@ CSound_live_channel* CSoundRender_Core::create_live_channel(u16 channels, u32 sa
 	return xr_new<CLiveRadioChannel>(src, st_Music);
 }
 
-CSound_live_channel* CSoundRender_Core::radio_open(LPCSTR endpoint_id, bool loopback, u32 ring_ms)
+CSound_live_channel* CSoundRender_Core::radio_open(LPCSTR endpoint_id, bool loopback, u32 ring_ms, u16 channels)
 {
 	if (!bPresent) return nullptr;
 
-	// Fixed engine-friendly channel format; the capture resamples the device to it.
-	CSound_live_channel* ch = create_live_channel(2, 44100, ring_ms);
+	// Engine-friendly channel format; the capture resamples/downmixes the device
+	// to it. Mono (1) is required for the spatial reverb send to be audible.
+	CSound_live_channel* ch = create_live_channel(channels, 44100, ring_ms);
 	if (!ch) return nullptr;
 
 	if (!ch->start_capture(endpoint_id, loopback))
@@ -153,6 +154,13 @@ void CLiveRadioChannel::set_volume(float v)
 void CLiveRadioChannel::clear()
 {
 	if (m_source) m_source->flush();
+}
+
+void CLiveRadioChannel::set_spatial(bool on, float wet)
+{
+	// The source must be mono for OpenAL to route it through the reverb send;
+	// the caller picks the channel count at open time accordingly.
+	if (m_source) m_source->set_reverb(on, wet);
 }
 
 bool CLiveRadioChannel::start_capture(LPCSTR endpoint_id, bool loopback)
