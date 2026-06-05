@@ -4,6 +4,18 @@
 
 Here is list of exe files for Anomaly 1.5.3 that contains all engine patches by community required for some advanced mods to work.
 
+## This fork: Live Radio Route
+
+Adds a live external-PCM sound route to xrSound: capture a Windows audio device
+(WASAPI loopback for desktop audio, or a microphone/line-in/virtual cable) and
+play it in-game as a looped 2D "radio". Exposed to scripts via a new
+`radio_channel` luabind class. A standalone, self-contained Lua/MCM mod is
+bundled under `mods/Live Radio Route/`; see that folder's README for usage.
+
+Engine additions live in `src/xrSound` (`SoundRender_Source_Live`,
+`Capture_WASAPI`, `SoundRender_LiveChannel`) plus the `script_radio` binding in
+`src/xrGame`.
+
 # Versions
 The Modded Exes come with standard and MT versions (currently in test phase designated as MT-TEST).
 

@@ -5,6 +5,7 @@
 #include "SoundRender_Cache.h"
 
 class CNotificationClient;
+class CSoundRender_Source_Live;
 
 class CSoundRender_Core : public CSound_manager_interface
 {
@@ -47,6 +48,7 @@ protected:
 
 	// Containers
 	xr_unordered_map<xr_string, CSoundRender_Source*> s_sources;
+	xr_vector<CSoundRender_Source_Live*> s_live_sources; // live PCM sources (owned by channels)
 	xr_vector<CSoundRender_Emitter*> s_emitters;
 	u32 s_emitters_u; // emitter update marker
 	xr_vector<CSoundRender_Target*> s_targets;
@@ -126,6 +128,16 @@ public:
 
 	virtual void object_relcase(CObject* obj);
 	void i_create_all_sources();
+
+	// --- Live "radio" (external PCM) ---
+	CSoundRender_Source_Live* i_create_live_source(LPCSTR name, u16 channels, u32 sample_rate, u32 ring_bytes);
+	void i_destroy_live_source(CSoundRender_Source_Live* S);
+	void create_live(ref_sound& S, CSoundRender_Source_Live* src, esound_type sound_type, int game_type);
+
+	virtual CSound_live_channel* create_live_channel(u16 channels, u32 sample_rate, u32 ring_ms) override;
+	virtual CSound_live_channel* radio_open(LPCSTR endpoint_id, bool loopback, u32 ring_ms) override;
+	virtual void destroy_live_channel(CSound_live_channel* ch) override;
+	virtual void enumerate_capture_devices(xr_vector<SSoundCaptureDevice>& dst) override;
 
 	virtual float get_occlusion_to(const Fvector& hear_pt, const Fvector& snd_pt, float dispersion = 0.2f);
 	float get_occlusion(Fvector& P, float R, Fvector* occ) override;

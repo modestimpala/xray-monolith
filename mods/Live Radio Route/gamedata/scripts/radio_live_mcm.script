@@ -1,0 +1,45 @@
+--[[============================================================================
+	Live Radio - MCM configuration
+
+	Builds the device picker from the engine's live-audio device enumeration
+	('radio_channel.refresh_devices' + 'device_*'). The device list is captured
+	when this menu is built; if you plug/unplug devices, reopen the game's
+	options menu to refresh the list.
+============================================================================--]]
+
+function on_mcm_load()
+	-- Device dropdown: value = engine endpoint id (string), label = friendly name.
+	-- First entry "" = system default render endpoint (loopback).
+	local content = { { "", "Default output (loopback)" } }
+
+	if radio_channel and radio_refresh_devices then
+		radio_refresh_devices()
+		for i = 0, radio_device_count() - 1 do
+			local id   = radio_device_id(i)
+			local name = radio_device_name(i)
+			local tag  = radio_device_is_render(i) and "[OUT] " or "[MIC] "
+			if id and id ~= "" then
+				content[#content + 1] = { id, tag .. (name or id) }
+			end
+		end
+	end
+
+	local op = {
+		id = "radio_live", sh = true, gr = {
+			{ id = "title",   type = "slide",    link = "ui_options_slider_player",
+			  text = "ui_mcm_radio_live_title", size = { 512, 50 }, spacing = 20 },
+
+			-- string value -> val = 0
+			{ id = "device",  type = "list",     val = 0, content = content, def = "",
+			  hint = "Audio device to stream into the game" },
+
+			{ id = "volume",  type = "track",    val = 2, min = 0,   max = 1,    step = 0.05, def = 0.7 },
+			{ id = "latency", type = "track",    val = 2, min = 200, max = 3000, step = 100,  def = 1500,
+			  hint = "Buffering in ms. Lower = less delay, higher = fewer dropouts" },
+
+			{ id = "keybind", type = "key_bind", val = 2, def = DIK_keys.DIK_HOME },
+		}
+	}
+
+	return op
+end

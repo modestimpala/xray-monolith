@@ -57,6 +57,15 @@
     <ClInclude Include="SoundRender_Source.h">
       <Filter>Source</Filter>
     </ClInclude>
+    <ClInclude Include="SoundRender_Source_Live.h">
+      <Filter>Source</Filter>
+    </ClInclude>
+    <ClInclude Include="SoundRender_LiveChannel.h">
+      <Filter>Source</Filter>
+    </ClInclude>
+    <ClInclude Include="Capture_WASAPI.h">
+      <Filter>Source</Filter>
+    </ClInclude>
     <ClInclude Include="SoundRender_Target.h">
       <Filter>Target</Filter>
     </ClInclude>
@@ -114,6 +123,15 @@
       <Filter>Emitter</Filter>
     </ClCompile>
     <ClCompile Include="SoundRender_Source.cpp">
+      <Filter>Source</Filter>
+    </ClCompile>
+    <ClCompile Include="SoundRender_Source_Live.cpp">
+      <Filter>Source</Filter>
+    </ClCompile>
+    <ClCompile Include="SoundRender_LiveChannel.cpp">
+      <Filter>Source</Filter>
+    </ClCompile>
+    <ClCompile Include="Capture_WASAPI.cpp">
       <Filter>Source</Filter>
     </ClCompile>
     <ClCompile Include="SoundRender_Source_loader.cpp">

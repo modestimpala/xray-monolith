@@ -5190,6 +5190,9 @@
     <ClInclude Include="script_sound.h">
       <Filter>AI\AScript\ScriptClasses\ScriptSound</Filter>
     </ClInclude>
+    <ClInclude Include="script_radio.h">
+      <Filter>AI\AScript\ScriptClasses\ScriptSound</Filter>
+    </ClInclude>
     <ClInclude Include="script_sound_inline.h">
       <Filter>AI\AScript\ScriptClasses\ScriptSound</Filter>
     </ClInclude>
@@ -8781,6 +8784,12 @@
       <Filter>AI\AScript\ScriptClasses\ScriptSound</Filter>
     </ClCompile>
     <ClCompile Include="script_sound_script.cpp">
+      <Filter>AI\AScript\ScriptClasses\ScriptSound</Filter>
+    </ClCompile>
+    <ClCompile Include="script_radio.cpp">
+      <Filter>AI\AScript\ScriptClasses\ScriptSound</Filter>
+    </ClCompile>
+    <ClCompile Include="script_radio_script.cpp">
       <Filter>AI\AScript\ScriptClasses\ScriptSound</Filter>
     </ClCompile>
     <ClCompile Include="..\xrServerEntities\script_callStack.cpp">

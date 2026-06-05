@@ -3,11 +3,21 @@
 
 #include "SoundRender_Core.h"
 #include "SoundRender_Source.h"
+#include "SoundRender_Source_Live.h"
 #include "SoundRender_Emitter.h"
 #include "SoundRender_Target.h"
 
 void CSoundRender_Emitter::fill_data(u8* _dest, u32 offset, u32 size)
 {
+	// Live (external PCM) sources read straight from their ring buffer and
+	// bypass the OGG decompress cache (which would serve stale data for a feed).
+	CSoundRender_Source* S = source();
+	if (S->is_live())
+	{
+		static_cast<CSoundRender_Source_Live*>(S)->read_pcm(_dest, size);
+		return;
+	}
+
 	/*
 		Msg				("stream: %10s - %d",*source->fname,size);
 		CopyMemory	(_dest,&source->m_buffer.front()+offset,size);

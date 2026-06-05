@@ -22,6 +22,7 @@
 #include "ui/UIActorMenu.h"
 #include "ui/UIMainIngameWnd.h"
 #include "ui/UIPdaWnd.h"
+#include "script_radio.h"
 
 void export_classes	(lua_State *L)
 {
@@ -122,6 +123,7 @@ void export_classes	(lua_State *L)
 	CScriptParticleAction::script_register(L);
 	CScriptRenderDevice::script_register(L);
 	CScriptSound::script_register(L);
+	CScriptRadio::script_register(L);
 	CScriptSoundAction::script_register(L);
 	CScriptSoundInfo::script_register(L);
 	UIRegistrator::script_register(L);

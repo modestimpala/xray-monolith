@@ -5,6 +5,7 @@
 
 #include "SoundRender_Core.h"
 #include "SoundRender_Source.h"
+#include "SoundRender_Source_Live.h"
 #include "SoundRender_Emitter.h"
 
 #include "NotificationClient.h"
@@ -100,6 +101,11 @@ void CSoundRender_Core::_clear()
 		xr_delete(kv.second);
 
 	s_sources.clear();
+
+	// remove any live sources whose channels were not torn down explicitly
+	for (auto* ls : s_live_sources)
+		xr_delete(ls);
+	s_live_sources.clear();
 
 	// remove emmiters
 	for (u32 eit = 0; eit < s_emitters.size(); eit++)
@@ -430,7 +436,12 @@ void CSoundRender_Core::_destroy_data(ref_sound_data& S)
 		E->stop(FALSE);
 	}
 	R_ASSERT(0==S.feedback);
-	SoundRender->i_destroy_source((CSoundRender_Source*)S.handle);
+
+	// Live sources are owned by their CLiveRadioChannel, not the file-source
+	// registry; never route them through i_destroy_source.
+	CSoundRender_Source* src = (CSoundRender_Source*)S.handle;
+	if (src && !src->is_live())
+		SoundRender->i_destroy_source(src);
 
 	S.handle = NULL;
 }

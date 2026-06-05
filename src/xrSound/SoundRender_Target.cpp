@@ -79,6 +79,12 @@ void CSoundRender_Target::attach()
 {
 	VERIFY(0==wave);
 	VERIFY(m_pEmitter);
+
+	// Live (external PCM) sources have no OGG file to decode - the streamer
+	// reads straight from the ring buffer, so there is nothing to attach.
+	if (m_pEmitter->source()->is_live())
+		return;
+
 	ov_callbacks ovc = {ov_read_func, ov_seek_func, ov_close_func, ov_tell_func};
 	wave = FS.r_open(m_pEmitter->source()->pname.c_str());
 	R_ASSERT3(wave&&wave->length(), "Can't open wave file:", m_pEmitter->source()->pname.c_str());

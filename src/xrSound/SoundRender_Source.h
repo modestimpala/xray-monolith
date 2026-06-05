@@ -29,7 +29,7 @@ private:
 	bool LoadWave(LPCSTR name);
 public:
 	CSoundRender_Source();
-	~CSoundRender_Source();
+	virtual ~CSoundRender_Source();
 
 	void load(LPCSTR name);
 	void unload();
@@ -41,5 +41,9 @@ public:
 	virtual float base_volume() const { return m_fBaseVolume; }
 	virtual u16 channels_num() const { return m_wformat.nChannels; }
 	virtual u32 bytes_total() const { return dwBytesTotal; }
+
+	// Live (external PCM) sources override this so the streaming path
+	// reads straight from a ring buffer instead of the OGG cache.
+	virtual bool is_live() const { return false; }
 };
 #endif

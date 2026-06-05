@@ -1,0 +1,135 @@
+--[[============================================================================
+	Live Radio  -  external audio device -> in-game 2D "radio"
+
+	Routes a Windows audio endpoint into the game through the engine's
+	'radio_channel' binding (xrSound CSound_live_channel). It can capture:
+	  * a render endpoint in LOOPBACK mode  -> "whatever your PC is playing"
+	  * a capture endpoint (microphone / line-in / virtual cable)
+
+	The captured PCM is played as a looping, non-positional sound, so it
+	behaves like any other radio channel (volume, start/stop, etc).
+
+	Requires an engine build that exposes the 'radio_channel' Lua class.
+	If that class is missing this script degrades gracefully (no-ops).
+============================================================================--]]
+
+local chan    = nil    -- radio_channel instance (created lazily)
+local playing = false
+
+-- Defaults (used when MCM is not installed) ----------------------------------
+local DEF_DEVICE = ""                  -- "" => system default render endpoint
+local DEF_VOL    = 0.7
+local DEF_RING   = 1500                -- ring/latency buffer in ms
+local DEF_KEY    = DIK_keys.DIK_HOME
+
+-- MCM helpers ----------------------------------------------------------------
+local function mcm_get(key, default)
+	if ui_mcm then
+		local v = ui_mcm.get("radio_live/" .. key)
+		if v ~= nil then return v end
+	end
+	return default
+end
+
+function get_device_id() return mcm_get("device", DEF_DEVICE) end
+function get_volume()    return mcm_get("volume", DEF_VOL) end
+function get_ring_ms()   return mcm_get("latency", DEF_RING) end
+
+local function available()
+	return radio_channel ~= nil
+end
+
+-- Decide loopback vs capture from the live device enumeration.
+-- Default ("") is always a render endpoint -> loopback.
+local function device_is_capture(id)
+	if not id or id == "" then return false end
+	if not (available() and radio_refresh_devices) then return false end
+	radio_refresh_devices()
+	for i = 0, radio_device_count() - 1 do
+		if radio_device_id(i) == id then
+			return not radio_device_is_render(i)
+		end
+	end
+	return false
+end
+
+local function notify(msg)
+	printf("[radio_live] %s", msg)
+	if actor_menu and actor_menu.set_msg then
+		actor_menu.set_msg(1, "Live Radio: " .. msg, 4)
+	end
+end
+
+-- Public API -----------------------------------------------------------------
+function is_on()
+	return playing and chan ~= nil and chan:is_open()
+end
+
+function start()
+	if is_on() then return true end
+	if not available() then
+		notify("engine 'radio_channel' binding not found")
+		return false
+	end
+
+	if not chan then chan = radio_channel() end
+	chan:set_ring_ms(get_ring_ms())
+
+	local id = get_device_id()
+	local ok
+	if device_is_capture(id) then
+		ok = chan:open_capture(id)
+	else
+		ok = chan:open_loopback(id)   -- id "" => default render endpoint
+	end
+
+	if not ok then
+		notify("failed to open the selected audio device")
+		return false
+	end
+
+	chan:set_volume(get_volume())
+	chan:play(db.actor)
+	playing = true
+	notify("on")
+	return true
+end
+
+function stop()
+	if chan then
+		chan:stop()
+		chan:close()
+	end
+	playing = false
+end
+
+function toggle()
+	if is_on() then stop() else start() end
+end
+
+function set_volume(v)
+	if chan then chan:set_volume(v) end
+end
+
+-- Hotkey + lifecycle ---------------------------------------------------------
+local KEY = DEF_KEY
+
+local function on_option_change(mcm)
+	KEY = mcm_get("keybind", DEF_KEY)
+	if is_on() then set_volume(get_volume()) end
+end
+
+local function on_key_press(key)
+	if key == KEY then toggle() end
+end
+
+local function actor_on_net_destroy()
+	stop()   -- never keep a live channel across save/exit
+end
+
+function on_game_start()
+	RegisterScriptCallback("on_option_change", on_option_change)
+	RegisterScriptCallback("on_key_press", on_key_press)
+	RegisterScriptCallback("actor_on_net_destroy", actor_on_net_destroy)
+	on_option_change(true)
+end

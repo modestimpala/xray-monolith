@@ -1570,6 +1570,7 @@
     <ClInclude Include="script_property_evaluator_wrapper.h" />
     <ClInclude Include="script_property_evaluator_wrapper_inline.h" />
     <ClInclude Include="script_render_device.h" />
+    <ClInclude Include="script_radio.h" />
     <ClInclude Include="script_sound.h" />
     <ClInclude Include="script_sound_action.h" />
     <ClInclude Include="script_sound_action_inline.h" />
@@ -3529,6 +3530,11 @@
       <PrecompiledHeaderOutputFile>$(IntDir)$(ProjectName)_script.pch</PrecompiledHeaderOutputFile>
     </ClCompile>
     <ClCompile Include="script_render_device_script.cpp">
+      <PrecompiledHeaderFile>pch_script.h</PrecompiledHeaderFile>
+      <PrecompiledHeaderOutputFile>$(IntDir)$(ProjectName)_script.pch</PrecompiledHeaderOutputFile>
+    </ClCompile>
+    <ClCompile Include="script_radio.cpp" />
+    <ClCompile Include="script_radio_script.cpp">
       <PrecompiledHeaderFile>pch_script.h</PrecompiledHeaderFile>
       <PrecompiledHeaderOutputFile>$(IntDir)$(ProjectName)_script.pch</PrecompiledHeaderOutputFile>
     </ClCompile>

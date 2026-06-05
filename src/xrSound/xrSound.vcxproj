@@ -301,6 +301,7 @@
     </Link>
   </ItemDefinitionGroup>
   <ItemGroup>
+    <ClInclude Include="Capture_WASAPI.h" />
     <ClInclude Include="cl_intersect.h" />
     <ClInclude Include="NotificationClient.h" />
     <ClInclude Include="OpenALDeviceList.h" />
@@ -311,7 +312,9 @@
     <ClInclude Include="SoundRender_CoreA.h" />
     <ClInclude Include="SoundRender_Emitter.h" />
     <ClInclude Include="SoundRender_Environment.h" />
+    <ClInclude Include="SoundRender_LiveChannel.h" />
     <ClInclude Include="SoundRender_Source.h" />
+    <ClInclude Include="SoundRender_Source_Live.h" />
     <ClInclude Include="SoundRender_Target.h" />
     <ClInclude Include="SoundRender_TargetA.h" />
     <ClInclude Include="stdafx.h" />
@@ -329,6 +332,7 @@
       <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Release-AVX|x64'">
       </PrecompiledHeader>
     </ClCompile>
+    <ClCompile Include="Capture_WASAPI.cpp" />
     <ClCompile Include="NotificationClient.cpp" />
     <ClCompile Include="OpenALDeviceList.cpp" />
     <ClCompile Include="sound.cpp" />
@@ -343,7 +347,9 @@
     <ClCompile Include="SoundRender_Emitter_StartStop.cpp" />
     <ClCompile Include="SoundRender_Emitter_streamer.cpp" />
     <ClCompile Include="SoundRender_Environment.cpp" />
+    <ClCompile Include="SoundRender_LiveChannel.cpp" />
     <ClCompile Include="SoundRender_Source.cpp" />
+    <ClCompile Include="SoundRender_Source_Live.cpp" />
     <ClCompile Include="SoundRender_Source_loader.cpp" />
     <ClCompile Include="SoundRender_Target.cpp" />
     <ClCompile Include="SoundRender_TargetA.cpp" />

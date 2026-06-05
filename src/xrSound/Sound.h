@@ -240,6 +240,45 @@ class XRSOUND_API CSound_environment
 public:
 };
 
+/// A capturable audio endpoint (for the live "radio" feed device picker).
+struct XRSOUND_API SSoundCaptureDevice
+{
+	shared_str id;        //!< opaque endpoint id (pass to radio_open / start_capture)
+	shared_str name;      //!< human-friendly device name
+	bool       is_render; //!< true = playback endpoint (use loopback), false = capture endpoint (mic/line)
+};
+
+/// definition (Live PCM channel - external audio fed into the engine as a 2D "radio")
+/// Produced by an external source (WASAPI capture, network stream, etc.) and played
+/// through the normal streaming pipeline as a non-positional, looped sound.
+class XRSOUND_API CSound_live_channel
+{
+public:
+	virtual ~CSound_live_channel()
+	{
+	}
+
+	// --- producer side (may be called from any thread) ---
+	//! push raw PCM matching channels()/sample_rate(), 16-bit signed, interleaved
+	virtual void push_pcm(const void* data, u32 bytes) = 0;
+
+	// --- control side (main/update thread) ---
+	virtual void play(CObject* O, float volume = 1.f) = 0;
+	virtual void stop() = 0;
+	virtual bool is_playing() = 0;
+	virtual void set_volume(float v) = 0;
+	virtual void clear() = 0; //!< drop buffered audio
+
+	// --- optional built-in WASAPI producer ---
+	//! start capturing from an endpoint (id==null => default). loopback=true captures
+	//! whatever is playing on a render endpoint; false captures a mic/line-in.
+	virtual bool start_capture(LPCSTR endpoint_id, bool loopback) = 0;
+	virtual void stop_capture() = 0;
+
+	virtual u16 channels() const = 0;
+	virtual u32 sample_rate() const = 0;
+};
+
 namespace soundSmoothingParams {
 	extern float pitchVariationPower;
 	extern float distanceBasedDelayPower;
@@ -431,6 +470,26 @@ public:
 
 	virtual void object_relcase(CObject* obj) = 0;
 	virtual const Fvector& listener_position() = 0;
+
+	// --- Live "radio" (external PCM) ---------------------------------------
+	//! Create a bare live channel you push PCM into yourself (no capture).
+	virtual CSound_live_channel* create_live_channel(u16 channels, u32 sample_rate, u32 ring_ms)
+	{
+		return nullptr;
+	}
+	//! Create a live channel auto-fed by a WASAPI capture/loopback device.
+	//! endpoint_id==null => default render endpoint. Returns null on failure.
+	virtual CSound_live_channel* radio_open(LPCSTR endpoint_id, bool loopback, u32 ring_ms)
+	{
+		return nullptr;
+	}
+	virtual void destroy_live_channel(CSound_live_channel* ch)
+	{
+	}
+	//! Enumerate render (loopback-able) and capture endpoints for a device picker.
+	virtual void enumerate_capture_devices(xr_vector<SSoundCaptureDevice>& dst)
+	{
+	}
 #ifdef __BORLANDC__
 	virtual SoundEnvironment_LIB*	get_env_library			()																						= 0;
 	virtual void					refresh_env_library		()																						= 0;
